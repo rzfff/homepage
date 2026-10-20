@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>访问统计 · 登录</title>
+<style>
+  :root {
+    --ground: #FAF9F6;
+    --surface: #FFFFFF;
+    --ink: #1F241F;
+    --sub: #5B6159;
+    --faint: #9B9F95;
+    --line: #E6E4DB;
+    --accent: #3E6B54;
+    --accent-soft: #EDF3EE;
+    --bad: #C34F45;
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, "JetBrains Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #141714; --surface: #1B1F1B; --ink: #E9EBE4; --sub: #A2A79B;
+      --faint: #6E736A; --line: #272C26; --accent: #8CBAA0; --accent-soft: #1E2620; --bad: #E08074;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #141714; --surface: #1B1F1B; --ink: #E9EBE4; --sub: #A2A79B;
+    --faint: #6E736A; --line: #272C26; --accent: #8CBAA0; --accent-soft: #1E2620; --bad: #E08074;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 28px 26px 24px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--sub);
+    margin: 0 0 20px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--sub);
+    margin: 14px 0 4px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--ground);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 11px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--sans);
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  button:disabled { opacity: 0.6; cursor: wait; }
+  .msg {
+    min-height: 20px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--bad);
+    text-align: center;
+  }
+  .foot {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .foot a { color: var(--faint); text-decoration: none; }
+  .foot a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="card" lang="zh-CN">
+  <div class="eyebrow">AnHappy · Internal</div>
+  <h1>访问统计 · 登录</h1>
+  <p class="hint">内部页面，使用 filebrowser 账号登录</p>
+
+  <form id="f">
+    <label for="u">用户名</label>
+    <input id="u" name="u" autocomplete="username" autofocus required>
+    <label for="p">密码</label>
+    <input id="p" name="p" type="password" autocomplete="current-password" required>
+    <button id="btn" type="submit">登录</button>
+    <div class="msg" id="msg"></div>
+  </form>
+
+  <div class="foot">
+    <span>登录状态约 2 小时</span>
+    <a href="/">← 返回主页</a>
+  </div>
+</div>
+
+<script>
+  // 登录走 filebrowser API(同源,密码放 X-Password 头,不进 URL);
+  // 成功后服务端种下全域 cookie(Path=/),随即跳回统计报告
+  var form = document.getElementById('f');
+  var btn = document.getElementById('btn');
+  var msg = document.getElementById('msg');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = document.getElementById('u').value.trim();
+    var p = document.getElementById('p').value;
+    if (!u || !p) return;
+    btn.disabled = true;
+    msg.textContent = '';
+    fetch('/fbq/api/auth/login?username=' + encodeURIComponent(u), {
+      method: 'POST',
+      headers: { 'X-Password': encodeURIComponent(p) }
+    }).then(function (r) {
+      if (r.ok) { location.href = '/stats/report.html'; return; }
+      btn.disabled = false;
+      msg.textContent = r.status === 401 ? '用户名或密码不正确' : '登录失败（' + r.status + '），稍后再试';
+    }).catch(function () {
+      btn.disabled = false;
+      msg.textContent = '网络异常，稍后再试';
+    });
+  });
+</script>
+</body>
+</html>
